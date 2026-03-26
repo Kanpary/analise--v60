@@ -18,16 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4   # versão mais recente
+        uses: actions/checkout@v4
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4   # versão mais recente
+        uses: actions/configure-pages@v4
+        with:
+          enablement: true   # força habilitar Pages
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3   # atualizado para v3 suportado
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./   # ajuste se o index.html estiver em outra pasta
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4   # versão mais recente
+        uses: actions/deploy-pages@v4

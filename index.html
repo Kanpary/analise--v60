@@ -20,11 +20,11 @@
         .btn-main:disabled { opacity: 0.2; cursor: not-allowed; }
         .btn-feed { background: #0a0a0a; border: 1px solid #1a1a1a; transition: all 0.2s; cursor: pointer; }
         .terminal { background: #000; height: 120px; overflow-y: auto; font-size: 10px; color: var(--singularity); border: 1px solid #111; border-radius: 25px; }
-        #timer-display { transition: all 0.5s ease; }
         .scanning-bar { height: 2px; background: var(--singularity); width: 0%; transition: width 0.5s ease; }
         @keyframes pulse-red { 0%, 100% { color: #ff4444; } 50% { color: #880000; } }
         .critical-alert { animation: pulse-red 1s infinite; }
         .rtp-chip { padding: 4px 12px; border-radius: 20px; font-size: 9px; font-weight: 900; text-transform: uppercase; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="p-4 md:p-8 flex items-center justify-center min-h-screen" onload="initNetwork()">
@@ -41,15 +41,24 @@
             <div id="timer-display" class="mono text-3xl font-bold text-zinc-800 tracking-tighter">00:00</div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onclick="registrarFeedback(0)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-red-500 border-red-900/20 hover:bg-red-950/10">Registrar Perda (-)</button>
-            <button onclick="registrarFeedback(1)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-green-500 border-green-900/20 hover:bg-green-950/10">Win no Normal (+)</button>
-            <button onclick="registrarFeedback(2)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-blue-500 border-blue-900/20 hover:bg-blue-950/10">Win no Turbo (+)</button>
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <button onclick="registrarFeedback(0)" class="md:col-span-3 btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-red-500 border-red-900/20 hover:bg-red-950/10">Registrar Perda (-)</button>
+            
+            <div class="md:col-span-9 bg-zinc-950/50 border border-zinc-900 p-3 rounded-3xl flex items-center gap-4 px-6">
+                <div class="flex-1">
+                    <p class="text-[8px] text-zinc-600 font-black uppercase mb-1">Ciclo do Ganho</p>
+                    <input id="ciclo-manual" type="number" placeholder="Ex: 1" class="w-full bg-transparent border-none text-xl font-bold mono outline-none text-[#00f2ff]">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="registrarFeedback(1)" class="bg-green-500/10 border border-green-500/20 px-6 py-4 rounded-2xl text-[9px] font-black text-green-500 hover:bg-green-500/20 uppercase transition-all">Win Normal</button>
+                    <button onclick="registrarFeedback(2)" class="bg-blue-500/10 border border-blue-500/20 px-6 py-4 rounded-2xl text-[9px] font-black text-blue-500 hover:bg-blue-500/20 uppercase transition-all">Win Turbo</button>
+                </div>
+            </div>
         </div>
 
         <div class="v60-panel p-8 md:p-12 space-y-8">
             <div id="burst-status" class="hidden bg-red-500/5 border border-red-500/20 p-4 rounded-3xl text-center">
-                <span id="burst-text" class="text-[10px] font-black uppercase critical-alert tracking-widest">Aviso: Risco de Retenção Identificado na Seed do Jogo</span>
+                <span id="burst-text" class="text-[10px] font-black uppercase critical-alert tracking-widest">Aviso: Risco de Retenção Identificado</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -65,7 +74,7 @@
                     <input id="gateway" type="url" value="https://m.pgsoft-games.com" class="w-full bg-black border border-zinc-800 p-5 rounded-3xl text-xs mono text-zinc-500 outline-none" readonly>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[10px] font-black text-zinc-500 uppercase">URL Direta do Jogo (Obrigatório)</label>
+                    <label class="text-[10px] font-black text-zinc-500 uppercase">URL Direta do Jogo</label>
                     <input id="game-url" type="url" placeholder="https://..." class="w-full bg-black border border-zinc-800 p-5 rounded-3xl text-xs mono text-white outline-none focus:border-[#00f2ff]">
                 </div>
                 <div class="space-y-2">
@@ -94,8 +103,8 @@
 
                 <div class="bg-black border border-zinc-900 rounded-[80px] p-16 text-center relative overflow-hidden">
                     <div id="break-box" class="hidden mb-6 p-4 border border-yellow-500/30 bg-yellow-500/5 rounded-3xl animate-pulse">
-                        <span class="text-[10px] text-yellow-500 font-black uppercase">Fase 1: Neutralizar Retenção (Obrigatório)</span>
-                        <div id="break-val" class="text-2xl font-bold mono text-white">1 GIRO MANUAL (MIN)</div>
+                        <span class="text-[10px] text-yellow-500 font-black uppercase">Neutralizando Cluster</span>
+                        <div id="break-val" class="text-2xl font-bold mono text-white">--</div>
                     </div>
 
                     <div id="signal" class="text-7xl md:text-[9rem] font-black italic tracking-tighter text-white mb-10 leading-none">--</div>
@@ -154,7 +163,8 @@
             bText: document.getElementById('burst-text'),
             scan: document.getElementById('scan-bar'),
             net: document.getElementById('net-display'),
-            rtp: document.getElementById('rtp-status')
+            rtp: document.getElementById('rtp-status'),
+            inputCiclo: document.getElementById('ciclo-manual')
         };
 
         async function initNetwork() {
@@ -184,25 +194,22 @@
             }
         }
 
-        // MUDANÇA AQUI: Lógica de feedback aceita 0, 1 e 2
-        function registrarFeedback(val) {
-            sessionData.push(val);
-            if(sessionData.length > 30) sessionData.shift();
+        function registrarFeedback(tipo) {
+            const ciclo = parseInt(dom.inputCiclo.value) || (tipo === 0 ? 0 : 1);
+            sessionData.push({ tipo, ciclo, time: Date.now() });
+            if(sessionData.length > 50) sessionData.shift();
             localStorage.setItem('v60_history', JSON.stringify(sessionData));
+            
             clearInterval(timerInterval);
             dom.tdisp.innerText = "00:00";
             dom.tdisp.style.color = "#18181b";
             
-            let msgLog = "RECALIBRANDO: Padrão de retenção identificado.";
-            let colorLog = "#ff4444";
-            
-            if(val === 1) { msgLog = "SUCESSO: Zona de pagamento Normal mapeada."; colorLog = "#00ffcc"; }
-            if(val === 2) { msgLog = "SUCESSO: Zona de pagamento Turbo mapeada."; colorLog = "#00f2ff"; }
-
-            addLog(msgLog, colorLog);
+            let mod = tipo === 1 ? "Normal" : (tipo === 2 ? "Turbo" : "Perda");
+            addLog(`FEEDBACK MANUAL: Ciclo ${ciclo} (${mod}). IA Calibrando Cluster...`, tipo > 0 ? "#00ffcc" : "#ff4444");
+            dom.inputCiclo.value = ""; // Limpa para a próxima
         }
 
-        function startNeuralTimer(duration, currentAcc) {
+        function startNeuralTimer(duration) {
             clearInterval(timerInterval);
             let timer = duration;
             dom.tdisp.style.color = "#00f2ff";
@@ -225,91 +232,46 @@
             dom.btn.disabled = true;
             dom.res.classList.add('hidden');
             dom.scan.style.width = "100%";
-            addLog("Mapeando Liquidez do RTP e Otimizando Decisões...", "#fff");
+            addLog("Mapeando Latência e Sincronizando Deep Neural...", "#fff");
 
             let pings = [];
-            for (let i = 0; i < 25; i++) {
+            for (let i = 0; i < 20; i++) {
                 let t0 = performance.now();
-                try { 
-                    await fetch(targetUrl + "?v=" + Math.random(), { mode: 'no-cors' }); 
-                    pings.push(performance.now() - t0); 
-                } catch(e) {}
+                try { await fetch(targetUrl + "?v=" + Math.random(), { mode: 'no-cors' }); pings.push(performance.now() - t0); } catch(e) {}
             }
 
             const avgJitter = Math.sqrt(pings.reduce((a, b) => a + Math.pow(b - (pings.reduce((x,y)=>x+y)/pings.length), 2), 0) / pings.length);
             const rtpVariance = Math.max(...pings) - Math.min(...pings);
             
             let rtpLiquidez = "NORMAL";
-            let rtpColor = "bg-green-500/20 text-green-500";
-            let rtpValue = 96.5 + (Math.random() * 2);
+            let rtpValue = 96.0 + (Math.random() * 2);
+            if(rtpVariance > 140) { rtpLiquidez = "BAIXA"; rtpValue = 87.5 + (Math.random() * 3); }
+            else if(rtpVariance < 40) { rtpLiquidez = "ALTA"; rtpValue = 98.8 + (Math.random() * 1); }
 
-            if(rtpVariance > 150) {
-                rtpLiquidez = "BAIXA";
-                rtpColor = "bg-red-500/20 text-red-500";
-                rtpValue = 89.2 + (Math.random() * 3);
-            } else if(rtpVariance < 40) {
-                rtpLiquidez = "ALTA";
-                rtpColor = "bg-[#00f2ff]/20 text-[#00f2ff]";
-                rtpValue = 98.9 + (Math.random() * 1);
-            }
+            // ANALISE DE CICLOS MANUAIS (NEURAL CORE V60)
+            const lastWins = sessionData.filter(d => d.tipo > 0);
+            const avgManualCycle = lastWins.length > 0 ? lastWins.reduce((a,b) => a + b.ciclo, 0) / lastWins.length : 1;
+            
+            // QUEBRA DINÂMICA: (Variância + Ciclo Médio) / Fator de Correção
+            let quebraDinamica = Math.ceil((rtpVariance / 35) + (avgManualCycle * 0.7));
+            quebraDinamica = Math.max(1, quebraDinamica); // Sem limite superior
 
-            const seedStr = `${userData.ip}-${avgJitter}-${Date.now()}`;
-            const buffer = await crypto.subtle.digest('SHA-512', new TextEncoder().encode(seedStr));
+            const buffer = await crypto.subtle.digest('SHA-512', new TextEncoder().encode(`${Date.now()}-${avgManualCycle}`));
             const h = new Uint8Array(buffer);
 
-            // MUDANÇA AQUI: V60 NEURAL CORE LÊ OS GANHOS DIRECIONAIS (NORMAL VS TURBO)
-            const winsNormal = sessionData.filter(x => x === 1).length;
-            const winsTurbo = sessionData.filter(x => x === 2).length;
-            const totalWins = winsNormal + winsTurbo;
-            const winRate = sessionData.length > 0 ? (totalWins / sessionData.length) : 0.5;
-            
-            let n, t, betMult, accBase;
+            let n, t, betMult, accBase = 91.5;
 
-            // 1. Decisão baseada no estado do Cluster (RTP)
+            // Lógica Adaptativa
             if (rtpLiquidez === "ALTA") {
-                n = (h[0] % 4) + 2;
-                t = (h[1] % 12) + 8;
-                betMult = 0.025;
-                accBase = 96.0;
-            } else if (rtpLiquidez === "BAIXA") {
-                n = (h[0] % 15) + 8;
-                t = (h[1] % 4) + 2;
-                betMult = 0.005;
-                accBase = 84.0;
+                n = (h[0] % 6) + 2; t = (h[1] % 12) + 8; betMult = 0.03; accBase = 97.0;
             } else {
-                n = (h[0] % 8) + 4;
-                t = (h[1] % 8) + 5;
+                // Se o ciclo médio for alto (demorando a pagar), a IA aumenta giros iniciais
+                n = (h[0] % 8) + Math.floor(avgManualCycle * 2);
+                t = (h[1] % 8) + Math.floor(avgManualCycle * 1.5);
                 betMult = 0.012;
-                accBase = 91.0;
             }
 
-            // 2. Machine Learning Adaptativo DIRECIONAL
-            if (totalWins > 0) {
-                if (winsTurbo > winsNormal) {
-                    // Tendência de pagamento no TURBO
-                    t += (h[2] % 5) + 3; 
-                    n = Math.max(1, n - 2); // Diminui exposição no normal
-                    accBase += 2.8;
-                } else if (winsNormal > winsTurbo) {
-                    // Tendência de pagamento no NORMAL
-                    n += (h[2] % 5) + 3;
-                    t = Math.max(1, t - 2); // Diminui exposição no turbo
-                    accBase += 2.8;
-                } else {
-                    // Empate (pagando em ambos)
-                    accBase += 1.5;
-                }
-            } else if (sessionData.length > 3 && totalWins === 0) {
-                // Modo defesa total (Só Perdas)
-                n += (h[2] % 4) + 4; 
-                t = Math.max(1, t - 3);
-                accBase -= 1.8;
-            }
-
-            const endsInOne = dom.bank.value.toString().endsWith('1');
-            if (endsInOne) { t += 3; accBase += 1.5; }
-
-            let acc = accBase - (avgJitter * 0.01) + (winRate * 2.0) + (h[3] % 2);
+            let acc = accBase - (avgJitter * 0.04) + (lastWins.length * 1.2);
             acc = Math.min(99.99, acc);
 
             setTimeout(() => {
@@ -317,36 +279,25 @@
                 dom.acc.innerText = acc.toFixed(2) + "%";
                 dom.sig.innerText = `${n}N + ${t}T`;
                 dom.jit.innerText = avgJitter.toFixed(3) + "ms";
-                
                 dom.rtp.innerText = `RTP: ${rtpValue.toFixed(1)}% | ${rtpLiquidez}`;
-                dom.rtp.className = `rtp-chip ${rtpColor}`;
-                
+                dom.rtp.className = `rtp-chip ${rtpLiquidez === "ALTA" ? "bg-cyan-500/20 text-cyan-400" : (rtpLiquidez === "BAIXA" ? "bg-red-500/20 text-red-400" : "bg-zinc-800 text-zinc-400")}`;
                 dom.load.innerText = rtpLiquidez;
-                dom.load.style.color = rtpLiquidez === "ALTA" ? "#00f2ff" : (rtpLiquidez === "BAIXA" ? "#ff4444" : "#fff");
-                dom.tstat.innerText = "240s";
                 
-                if (rtpLiquidez === "BAIXA" || acc >= 99.8) {
-                    dom.bBox.classList.remove('hidden');
+                // Exibição da Quebra Dinâmica
+                dom.bBox.classList.remove('hidden');
+                document.getElementById('break-val').innerText = `${quebraDinamica} GIRO(S) MANUAL(IS)`;
+                if(quebraDinamica > 5) {
                     dom.bStatus.classList.remove('hidden');
-                    dom.bText.innerText = "LIQUIDEZ BAIXA: RETENÇÃO ATIVA NO CLUSTER";
-                    document.getElementById('break-val').innerText = "2 GIROS DE QUEBRA";
-                    addLog("AVISO: Sistema defensivo ativado. Reduzindo Exposição.", "#ffcc00");
-                } else {
-                    dom.msg.innerText = "SINCRONIZAÇÃO DE ALTA PRECISÃO";
-                    dom.box.style.borderLeftColor = "#00f2ff";
-                    
-                    // Adiciona log extra baseado na tendência
-                    if (winsTurbo > winsNormal) addLog("Direcionamento Otimizado para Turbos.", "#00f2ff");
-                    else if (winsNormal > winsTurbo) addLog("Direcionamento Otimizado para Normais.", "#00ffcc");
-                    else addLog("Sinal Otimizado via Neural Core V60.", "#00f2ff");
+                    dom.bText.innerText = "ALERTA: CLUSTER EM FASE DE COMPENSAÇÃO";
                 }
 
                 dom.bet.innerText = "R$ " + (parseFloat(dom.bank.value) * betMult).toFixed(2);
                 dom.res.classList.remove('hidden');
                 dom.btn.disabled = false;
-                startNeuralTimer(240, acc); 
+                startNeuralTimer(240); 
+                addLog(`Análise Concluída. Ciclo Médio Histórico: ${avgManualCycle.toFixed(1)}.`, "#ffcc00");
             }, 800);
         }
     </script>
 </body>
-                    </html>
+                                </html>

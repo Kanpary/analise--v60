@@ -41,9 +41,10 @@
             <div id="timer-display" class="mono text-3xl font-bold text-zinc-800 tracking-tighter">00:00</div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button onclick="registrarFeedback(0)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-red-500 border-red-900/20 hover:bg-red-950/10">Registrar Perda (-)</button>
-            <button onclick="registrarFeedback(1)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-green-500 border-green-900/20 hover:bg-green-950/10">Registrar Ganho (+)</button>
+            <button onclick="registrarFeedback(1)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-green-500 border-green-900/20 hover:bg-green-950/10">Win no Normal (+)</button>
+            <button onclick="registrarFeedback(2)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-blue-500 border-blue-900/20 hover:bg-blue-950/10">Win no Turbo (+)</button>
         </div>
 
         <div class="v60-panel p-8 md:p-12 space-y-8">
@@ -183,6 +184,7 @@
             }
         }
 
+        // MUDANÇA AQUI: Lógica de feedback aceita 0, 1 e 2
         function registrarFeedback(val) {
             sessionData.push(val);
             if(sessionData.length > 30) sessionData.shift();
@@ -190,7 +192,14 @@
             clearInterval(timerInterval);
             dom.tdisp.innerText = "00:00";
             dom.tdisp.style.color = "#18181b";
-            addLog(val === 1 ? "SUCESSO: Semente validada com lucro." : "RECALIBRANDO: Cluster em modo defesa.", val === 1 ? "#00ffcc" : "#ff4444");
+            
+            let msgLog = "RECALIBRANDO: Padrão de retenção identificado.";
+            let colorLog = "#ff4444";
+            
+            if(val === 1) { msgLog = "SUCESSO: Zona de pagamento Normal mapeada."; colorLog = "#00ffcc"; }
+            if(val === 2) { msgLog = "SUCESSO: Zona de pagamento Turbo mapeada."; colorLog = "#00f2ff"; }
+
+            addLog(msgLog, colorLog);
         }
 
         function startNeuralTimer(duration, currentAcc) {
@@ -216,7 +225,7 @@
             dom.btn.disabled = true;
             dom.res.classList.add('hidden');
             dom.scan.style.width = "100%";
-            addLog("Mapeando Liquidez do RTP Global...", "#fff");
+            addLog("Mapeando Liquidez do RTP e Otimizando Decisões...", "#fff");
 
             let pings = [];
             for (let i = 0; i < 25; i++) {
@@ -228,9 +237,8 @@
             }
 
             const avgJitter = Math.sqrt(pings.reduce((a, b) => a + Math.pow(b - (pings.reduce((x,y)=>x+y)/pings.length), 2), 0) / pings.length);
-            
-            // VERIFICADOR DE RTP REAL (Baseado na variância de resposta do Host)
             const rtpVariance = Math.max(...pings) - Math.min(...pings);
+            
             let rtpLiquidez = "NORMAL";
             let rtpColor = "bg-green-500/20 text-green-500";
             let rtpValue = 96.5 + (Math.random() * 2);
@@ -245,16 +253,63 @@
                 rtpValue = 98.9 + (Math.random() * 1);
             }
 
-            // SHA-512 Entropy
             const seedStr = `${userData.ip}-${avgJitter}-${Date.now()}`;
             const buffer = await crypto.subtle.digest('SHA-512', new TextEncoder().encode(seedStr));
             const h = new Uint8Array(buffer);
 
-            const endsInOne = dom.bank.value.toString().endsWith('1');
-            const n = (h[0] % (endsInOne ? 20 : 15)) + 8;
-            const t = (h[1] % (endsInOne ? 15 : 12)) + 5;
+            // MUDANÇA AQUI: V60 NEURAL CORE LÊ OS GANHOS DIRECIONAIS (NORMAL VS TURBO)
+            const winsNormal = sessionData.filter(x => x === 1).length;
+            const winsTurbo = sessionData.filter(x => x === 2).length;
+            const totalWins = winsNormal + winsTurbo;
+            const winRate = sessionData.length > 0 ? (totalWins / sessionData.length) : 0.5;
             
-            let acc = 93.50 + (avgJitter * 0.2) + (rtpLiquidez === "ALTA" ? 2.5 : -1.5);
+            let n, t, betMult, accBase;
+
+            // 1. Decisão baseada no estado do Cluster (RTP)
+            if (rtpLiquidez === "ALTA") {
+                n = (h[0] % 4) + 2;
+                t = (h[1] % 12) + 8;
+                betMult = 0.025;
+                accBase = 96.0;
+            } else if (rtpLiquidez === "BAIXA") {
+                n = (h[0] % 15) + 8;
+                t = (h[1] % 4) + 2;
+                betMult = 0.005;
+                accBase = 84.0;
+            } else {
+                n = (h[0] % 8) + 4;
+                t = (h[1] % 8) + 5;
+                betMult = 0.012;
+                accBase = 91.0;
+            }
+
+            // 2. Machine Learning Adaptativo DIRECIONAL
+            if (totalWins > 0) {
+                if (winsTurbo > winsNormal) {
+                    // Tendência de pagamento no TURBO
+                    t += (h[2] % 5) + 3; 
+                    n = Math.max(1, n - 2); // Diminui exposição no normal
+                    accBase += 2.8;
+                } else if (winsNormal > winsTurbo) {
+                    // Tendência de pagamento no NORMAL
+                    n += (h[2] % 5) + 3;
+                    t = Math.max(1, t - 2); // Diminui exposição no turbo
+                    accBase += 2.8;
+                } else {
+                    // Empate (pagando em ambos)
+                    accBase += 1.5;
+                }
+            } else if (sessionData.length > 3 && totalWins === 0) {
+                // Modo defesa total (Só Perdas)
+                n += (h[2] % 4) + 4; 
+                t = Math.max(1, t - 3);
+                accBase -= 1.8;
+            }
+
+            const endsInOne = dom.bank.value.toString().endsWith('1');
+            if (endsInOne) { t += 3; accBase += 1.5; }
+
+            let acc = accBase - (avgJitter * 0.01) + (winRate * 2.0) + (h[3] % 2);
             acc = Math.min(99.99, acc);
 
             setTimeout(() => {
@@ -268,7 +323,6 @@
                 
                 dom.load.innerText = rtpLiquidez;
                 dom.load.style.color = rtpLiquidez === "ALTA" ? "#00f2ff" : (rtpLiquidez === "BAIXA" ? "#ff4444" : "#fff");
-                
                 dom.tstat.innerText = "240s";
                 
                 if (rtpLiquidez === "BAIXA" || acc >= 99.8) {
@@ -276,13 +330,18 @@
                     dom.bStatus.classList.remove('hidden');
                     dom.bText.innerText = "LIQUIDEZ BAIXA: RETENÇÃO ATIVA NO CLUSTER";
                     document.getElementById('break-val').innerText = "2 GIROS DE QUEBRA";
-                    addLog("AVISO: RTP em queda. Aplique quebra manual.", "#ffcc00");
+                    addLog("AVISO: Sistema defensivo ativado. Reduzindo Exposição.", "#ffcc00");
                 } else {
                     dom.msg.innerText = "SINCRONIZAÇÃO DE ALTA PRECISÃO";
                     dom.box.style.borderLeftColor = "#00f2ff";
+                    
+                    // Adiciona log extra baseado na tendência
+                    if (winsTurbo > winsNormal) addLog("Direcionamento Otimizado para Turbos.", "#00f2ff");
+                    else if (winsNormal > winsTurbo) addLog("Direcionamento Otimizado para Normais.", "#00ffcc");
+                    else addLog("Sinal Otimizado via Neural Core V60.", "#00f2ff");
                 }
 
-                dom.bet.innerText = "R$ " + (parseFloat(dom.bank.value) * 0.015).toFixed(2);
+                dom.bet.innerText = "R$ " + (parseFloat(dom.bank.value) * betMult).toFixed(2);
                 dom.res.classList.remove('hidden');
                 dom.btn.disabled = false;
                 startNeuralTimer(240, acc); 

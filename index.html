@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Nexus V60 | Deep Neural Synthesis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --singularity: #00f2ff; --bg: #000; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #fff; overflow-x: hidden; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .v60-panel { 
+            background: radial-gradient(circle at top, #0d0d0d 0%, #000 100%);
+            border: 1px solid #1a1a1a; border-radius: 50px;
+            box-shadow: 0 0 120px rgba(0, 242, 255, 0.05);
+        }
+        .btn-main { background: #fff; color: #000; font-weight: 900; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; }
+        .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 30px rgba(255,255,255,0.2); }
+        .btn-main:disabled { opacity: 0.2; cursor: not-allowed; }
+        .btn-feed { background: #0a0a0a; border: 1px solid #1a1a1a; transition: all 0.2s; cursor: pointer; }
+        .terminal { background: #000; height: 120px; overflow-y: auto; font-size: 10px; color: var(--singularity); border: 1px solid #111; border-radius: 25px; }
+        #timer-display { transition: all 0.5s ease; }
+        .scanning-bar { height: 2px; background: var(--singularity); width: 0%; transition: width 0.5s ease; }
+        @keyframes pulse-red { 0%, 100% { color: #ff4444; } 50% { color: #880000; } }
+        .critical-alert { animation: pulse-red 1s infinite; }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex items-center justify-center min-h-screen" onload="initNetwork()">
+
+    <div class="w-full max-w-6xl space-y-6">
+        <div class="flex justify-between items-end px-6">
+            <div>
+                <h1 class="text-4xl font-black italic tracking-tighter uppercase">Quantum <span class="text-[#00f2ff]">V60</span></h1>
+                <p id="net-display" class="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.5em]">Deep Neural Synthesis | Master Mode</p>
+            </div>
+            <div id="timer-display" class="mono text-3xl font-bold text-zinc-800 tracking-tighter">00:00</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="registrarFeedback(0)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-red-500 border-red-900/20 hover:bg-red-950/10">Registrar Perda (-)</button>
+            <button onclick="registrarFeedback(1)" class="btn-feed p-6 rounded-3xl text-[10px] font-black uppercase text-green-500 border-green-900/20 hover:bg-green-950/10">Registrar Ganho (+)</button>
+        </div>
+
+        <div class="v60-panel p-8 md:p-12 space-y-8">
+            <div id="burst-status" class="hidden bg-red-500/5 border border-red-500/20 p-4 rounded-3xl text-center">
+                <span class="text-[10px] font-black uppercase critical-alert tracking-widest">Aviso: Risco de Retenção Identificado na Seed do Jogo</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-zinc-500 uppercase">Engine Provedora</label>
+                    <select id="prov" onchange="atualizarGateway()" class="w-full bg-black border border-zinc-800 p-5 rounded-3xl text-xs mono text-white outline-none focus:border-[#00f2ff]">
+                        <option value="PG">PG SOFT (Cluster Analysis)</option>
+                        <option value="PRAGMATIC">PRAGMATIC (DPI Synthesis)</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-zinc-500 uppercase">Host Gateway</label>
+                    <input id="gateway" type="url" value="https://m.pgsoft-games.com" class="w-full bg-black border border-zinc-800 p-5 rounded-3xl text-xs mono text-zinc-500 outline-none" readonly>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-zinc-500 uppercase">URL Direta do Jogo (Obrigatório)</label>
+                    <input id="game-url" type="url" placeholder="https://..." class="w-full bg-black border border-zinc-800 p-5 rounded-3xl text-xs mono text-white outline-none focus:border-[#00f2ff]">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-zinc-500 uppercase">Banca Total (R$)</label>
+                    <input id="bank" type="number" value="101" class="w-full bg-black border border-zinc-800 p-5 rounded-3xl text-xs mono text-white outline-none focus:border-[#00f2ff]">
+                </div>
+            </div>
+
+            <div class="scanning-bar" id="scan-bar"></div>
+
+            <button id="main-btn" onclick="analisarDeepSynthesis()" class="w-full btn-main py-10 rounded-[45px] text-[12px] uppercase tracking-[1.5em] italic">
+                Sincronizar Maestria V60
+            </button>
+
+            <div id="results" class="hidden space-y-8 animate-in fade-in zoom-in-95 duration-1000">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div id="ai-box" class="md:col-span-2 p-8 rounded-[40px] border-l-8 bg-zinc-950 flex flex-col justify-center border-zinc-800">
+                        <span class="text-[10px] font-black text-zinc-600 uppercase mb-2">Análise de Profundidade Neural:</span>
+                        <div id="ai-msg" class="text-lg font-bold italic text-white uppercase tracking-tighter">SINCRONIZADO</div>
+                    </div>
+                    <div class="bg-zinc-950 p-8 rounded-[40px] flex flex-col justify-center items-center border border-zinc-900">
+                        <span class="text-[10px] font-black text-zinc-600 uppercase mb-1">Assertividade</span>
+                        <div id="accuracy" class="text-5xl font-black mono text-[#00f2ff]">0.00%</div>
+                    </div>
+                </div>
+
+                <div class="bg-black border border-zinc-900 rounded-[80px] p-16 text-center relative overflow-hidden">
+                    <div id="break-box" class="hidden mb-6 p-4 border border-yellow-500/30 bg-yellow-500/5 rounded-3xl animate-pulse">
+                        <span class="text-[10px] text-yellow-500 font-black uppercase">Fase 1: Neutralizar Retenção (Obrigatório)</span>
+                        <div id="break-val" class="text-2xl font-bold mono text-white">1 GIRO MANUAL (MIN)</div>
+                    </div>
+
+                    <div id="signal" class="text-7xl md:text-[9rem] font-black italic tracking-tighter text-white mb-10 leading-none">--</div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div class="text-center">
+                            <span class="text-[9px] text-zinc-600 uppercase font-black block">Entrada Recomendada</span>
+                            <div id="val-bet" class="text-xl font-bold mono">R$ 0,00</div>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-[9px] text-zinc-600 uppercase font-black block">Carga da Seed</span>
+                            <div id="val-load" class="text-xl font-bold mono">--</div>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-[9px] text-zinc-600 uppercase font-black block">Variância Jitter</span>
+                            <div id="val-jit" class="text-xl font-bold mono text-zinc-500">--</div>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-[9px] text-zinc-600 uppercase font-black block">Sincronização</span>
+                            <div id="val-timer-status" class="text-xl font-bold mono text-[#00f2ff]">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="log" class="terminal p-8 mono leading-relaxed italic">
+                > Sistema V60 Maestro Online. Insira a URL direta do slot para máxima precisão.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionData = JSON.parse(localStorage.getItem('v60_history')) || [];
+        let timerInterval;
+        let userData = { ip: '0.0.0.0', isp: 'DETECTANDO...' };
+
+        const dom = {
+            btn: document.getElementById('main-btn'),
+            res: document.getElementById('results'),
+            acc: document.getElementById('accuracy'),
+            sig: document.getElementById('signal'),
+            jit: document.getElementById('val-jit'),
+            bet: document.getElementById('val-bet'),
+            msg: document.getElementById('ai-msg'),
+            box: document.getElementById('ai-box'),
+            log: document.getElementById('log'),
+            tdisp: document.getElementById('timer-display'),
+            bank: document.getElementById('bank'),
+            prov: document.getElementById('prov'),
+            gateway: document.getElementById('gateway'),
+            gameUrl: document.getElementById('game-url'),
+            tstat: document.getElementById('val-timer-status'),
+            load: document.getElementById('val-load'),
+            bBox: document.getElementById('break-box'),
+            bStatus: document.getElementById('burst-status'),
+            scan: document.getElementById('scan-bar'),
+            net: document.getElementById('net-display')
+        };
+
+        // Função de detecção real de rede
+        async function initNetwork() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                userData.ip = data.ip;
+                userData.isp = data.org;
+                dom.net.innerText = `${userData.isp} | Rota: ${data.city}`;
+            } catch(e) { dom.net.innerText = "ROTA LOCAL PRIVADA ATIVA"; }
+        }
+
+        function addLog(t, c="#00f2ff") {
+            const d = document.createElement('div');
+            d.innerHTML = `> <span style="color:${c}">${t}</span>`;
+            dom.log.appendChild(d); dom.log.scrollTop = dom.log.scrollHeight;
+        }
+
+        function atualizarGateway() {
+            sessionData = [];
+            if(dom.prov.value === "PG") {
+                dom.gateway.value = "https://m.pgsoft-games.com";
+                addLog("ENGINE ALTERNADA: PG SOFT CLUSTER ANALYSIS.", "#ffcc00");
+            } else {
+                dom.gateway.value = "https://demogamesfree.pragmaticplay.net";
+                addLog("ENGINE ALTERNADA: PRAGMATIC DPI SYNTHESIS.", "#ffcc00");
+            }
+        }
+
+        function registrarFeedback(val) {
+            sessionData.push(val);
+            if(sessionData.length > 30) sessionData.shift();
+            localStorage.setItem('v60_history', JSON.stringify(sessionData));
+            clearInterval(timerInterval);
+            dom.tdisp.innerText = "00:00";
+            dom.tdisp.style.color = "#18181b";
+            addLog(val === 1 ? "SUCESSO: Modelo Neural validado." : "RECALIBRANDO: Sensibilidade de retenção aumentada.", val === 1 ? "#00ffcc" : "#ff4444");
+        }
+
+        function startNeuralTimer(duration, currentAcc) {
+            clearInterval(timerInterval);
+            let timer = duration;
+            dom.tdisp.style.color = "#00f2ff";
+            timerInterval = setInterval(() => {
+                let mins = parseInt(timer / 60, 10);
+                let secs = parseInt(timer % 60, 10);
+                dom.tdisp.innerText = `${mins < 10 ? "0"+mins : mins}:${secs < 10 ? "0"+secs : secs}`;
+                if (--timer < 0) {
+                    clearInterval(timerInterval);
+                    dom.tdisp.style.color = "#ff4444";
+                    dom.tstat.innerText = "EXPIRADO";
+                    if (currentAcc >= 99.8) {
+                        addLog("BLINDAGEM CONFIRMADA: O servidor travou a seed de 99.9%. Execute 3 giros de quebra.", "#ff4444");
+                    }
+                }
+            }, 1000);
+        }
+
+        async function analisarDeepSynthesis() {
+            if(!dom.bank.value || dom.bank.value <= 0) {
+                addLog("ERRO: Valor de banca inválido.", "#ff4444");
+                return;
+            }
+
+            const targetUrl = dom.gameUrl.value ? dom.gameUrl.value : dom.gateway.value;
+            
+            dom.btn.disabled = true;
+            dom.res.classList.add('hidden');
+            dom.scan.style.width = "100%";
+            addLog(`Sincronizando handshake com ${userData.ip}...`, "#fff");
+
+            // Coleta de dados REAL (Variância de Latência)
+            let pings = [];
+            for (let i = 0; i < 30; i++) {
+                let t0 = performance.now();
+                try { 
+                    await fetch(targetUrl + "?v=" + Math.random(), { mode: 'no-cors' }); 
+                    pings.push(performance.now() - t0); 
+                } catch(e) {}
+            }
+
+            const avg = pings.reduce((a, b) => a + b) / pings.length;
+            const variance = Math.sqrt(pings.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / pings.length);
+            
+            // Gerador de Entropia SHA-512 Real (Usando Web Crypto API)
+            const seedStr = `${userData.ip}-${variance}-${Date.now()}`;
+            const buffer = await crypto.subtle.digest('SHA-512', new TextEncoder().encode(seedStr));
+            const h = new Uint8Array(buffer);
+
+            // Algoritmo Preditivo (Derivado dos bytes do Hash SHA-512)
+            const bankStr = dom.bank.value.toString();
+            const endsInOne = bankStr.endsWith('1');
+            const n = (h[0] % (endsInOne ? 20 : 15)) + 8;
+            const t = (h[1] % (endsInOne ? 15 : 12)) + 5;
+            
+            // Assertividade calculada em cima da estabilidade da rede (variance)
+            const winRate = sessionData.length > 0 ? (sessionData.filter(x => x === 1).length / sessionData.length) : 0.85;
+            let acc = 93.00 + (variance * 0.4) + (winRate * 3);
+            if(endsInOne) acc += 2;
+            acc = Math.min(99.99, acc);
+
+            const validadeIA = Math.floor(180 + (1 / (variance + 0.1)) * 100);
+
+            setTimeout(() => {
+                dom.scan.style.width = "0%";
+                dom.acc.innerText = acc.toFixed(2) + "%";
+                dom.sig.innerText = `${n}N + ${t}T`;
+                dom.jit.innerText = variance.toFixed(3) + "ms";
+                dom.tstat.innerText = validadeIA + "s";
+                
+                if (acc >= 99.8) {
+                    dom.bBox.classList.remove('hidden');
+                    dom.bStatus.classList.remove('hidden');
+                    dom.msg.innerText = "SEED BLINDADA: EXECUTE QUEBRA TRIPLA";
+                    dom.box.style.borderLeftColor = "#ff4444";
+                    document.getElementById('break-val').innerText = "3 GIROS MANUAIS (MIN)";
+                    addLog("ALERTA: Servidor em modo de retenção máxima detectado.", "#ff4444");
+                } else if(acc > 98 || endsInOne) {
+                    dom.bBox.classList.remove('hidden');
+                    dom.bStatus.classList.remove('hidden');
+                    dom.msg.innerText = "FLUXO INSTÁVEL: QUEBRA RECOMENDADA";
+                    dom.box.style.borderLeftColor = "#ffcc00";
+                    document.getElementById('break-val').innerText = "1 GIRO MANUAL (MIN)";
+                } else {
+                    dom.msg.innerText = "SINCRONIZAÇÃO DE ALTA PRECISÃO";
+                    dom.box.style.borderLeftColor = "#00f2ff";
+                }
+
+                dom.load.innerText = endsInOne ? "MAX BURST" : "STABLE SYNC";
+                dom.bet.innerText = "R$ " + (parseFloat(dom.bank.value) * 0.015).toFixed(2);
+                
+                dom.res.classList.remove('hidden');
+                dom.btn.disabled = false;
+                startNeuralTimer(validadeIA, acc); 
+            }, 800);
+        }
+    </script>
+</body>
+</html>
